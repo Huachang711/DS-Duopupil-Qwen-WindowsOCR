@@ -3,7 +3,7 @@
 # - input : image path + question file (UTF-8) + slot A/B/C
 # - output: answer file (UTF-8), raw response file, ASCII status on stdout
 # - never prints the key, never prints Chinese to the console
-# - run with: powershell -NoProfile -ExecutionPolicy Bypass -File 问模型.ps1 ...
+# - run with: powershell -NoProfile -ExecutionPolicy Bypass -File <this script> ...
 # ============================================================
 param(
   [Parameter(Mandatory = $true)][string]$ImagePath,
@@ -20,8 +20,12 @@ param(
 $ErrorActionPreference = 'Stop'
 $toolDir = Split-Path -Parent $PSCommandPath
 $rootDir = Split-Path -Parent $toolDir
-if (-not $KeyFile)    { $KeyFile    = Join-Path $rootDir '模型.txt' }
-if (-not $SlotFile)   { $SlotFile   = Join-Path $rootDir '槽位配置.txt' }
+# Chinese file names are built from char codes: this source must stay 100% ASCII
+# (a UTF-8 ps1 without BOM is read as GBK by Windows PowerShell 5.1, which corrupts literals)
+$keyName  = -join @([char]0x6A21, [char]0x578B) + '.txt'
+$slotName = -join @([char]0x69FD, [char]0x4F4D, [char]0x914D, [char]0x7F6E) + '.txt'
+if (-not $KeyFile)    { $KeyFile    = Join-Path $rootDir $keyName }
+if (-not $SlotFile)   { $SlotFile   = Join-Path $rootDir $slotName }
 if (-not $AnswerFile) { $AnswerFile = Join-Path $toolDir 'answer.txt' }
 if (-not $RawFile)    { $RawFile    = Join-Path $toolDir 'resp.json' }
 if (-not $ReqFile)    { $ReqFile    = Join-Path $toolDir 'req.json' }
@@ -39,7 +43,7 @@ try {
     $lines = [IO.File]::ReadAllLines($KeyFile, [Text.Encoding]::UTF8)
     foreach ($ln in $lines) {
       $t = $ln.Trim()
-      if ($t -match '^sk-[A-Za-z0-9\-]{8,}$') { $key = $t; break }
+      if ($t -match '^sk-\S{8,}$') { $key = $t; break }
     }
   }
   if (-not $key) { Fail 'NO_KEY' }
