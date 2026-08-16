@@ -125,7 +125,7 @@ csc /nologo /target:winexe /out:"<路径>\工具\DuoPupil.exe" "<路径>\工具\
 ├─ LICENSE                    ← MIT
 ├─ .gitignore                 ← 密钥/日志/截图防护
 ├─ 双瞳识图方案手册.md         ← 完整手册（自包含）
-├─ 模型.txt                   ← API Key 填写卡（无真实 Key）
+├─ 模型.txt.example          ← API Key 填写卡模板（复制为 模型.txt 使用，真实 Key 不入库）
 ├─ 双瞳技能包/                 ← DSH/Claude 技能入口（SKILL.md + references/）
 └─ 工具/                      ← 截图工具（脚本/启动器源码/界面文字/图标）
 ```
