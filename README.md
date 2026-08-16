@@ -164,7 +164,7 @@ csc /nologo /target:winexe /out:"<路径>\工具\DuoPupil.exe" "<路径>\工具\
 | 工具\双瞳截图.ps1 | 1bb6751e3cc00f253b8ffe16c8984f88c8a1a61b3c2dce91e2f52d17aebbdd76 |
 | 工具\双瞳托盘.ps1 | 6b7f0b3ffede5b55f5d8eefa7ea042b35efdf958a33c1cb653c21f291adcee95 |
 | 工具\问模型.ps1 | 1b36f6480d234df18db09f859d82d2e97cf586c56555ba199e68a4300bcdd3a5 |
-| 工具\launcher.cs | d038c5e06095b1ef86939270c0418318a5471e138996b42492fbbaf7deed7d47 |
+| 工具\launcher.cs | dae6ecc41aa4b8ff7ed8662613850e5da70ee8f101301828bc503c7acc614f12 |
 | 工具\ui.txt | 900e1c2ffe5640687aefcc4c08a1bafcb76e5706b6d8d3ce52d306cc8678230e |
 
 ## 🤝 贡献 & 协议
