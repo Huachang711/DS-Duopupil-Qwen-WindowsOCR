@@ -1,0 +1,27 @@
+# 密钥与隐私
+模型.txt
+
+# 运行时锁
+*.lock
+
+# 诊断日志
+timing.log
+tray-timing.log
+tray-error.log
+
+# 运行时生成
+hotkey.cfg
+pending.txt
+latest.txt
+resp.json
+models.json
+槽位配置.txt
+
+# 本机编译产物
+DuoPupil.exe
+
+# 用户截图数据
+图片/
+
+# 运行时配置
+code.cfg
