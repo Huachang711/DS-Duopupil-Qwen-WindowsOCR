@@ -128,6 +128,7 @@ csc /nologo /target:winexe /out:"<路径>\工具\DuoPupil.exe" "<路径>\工具\
 ├─ LICENSE                    ← MIT
 ├─ .gitignore                 ← 密钥/日志/截图防护
 ├─ 双瞳识图方案手册.md         ← 完整手册（自包含）
+├─ CHANGELOG.md               ← 更新日志（简短版）
 ├─ 模型.txt.example          ← API Key 填写卡模板（复制为 模型.txt 使用，真实 Key 不入库）
 ├─ 双瞳技能包/                 ← DSH/Claude 技能入口（SKILL.md + references/）
 └─ 工具/                      ← 截图工具（脚本/启动器源码/界面文字/图标）
@@ -153,6 +154,8 @@ csc /nologo /target:winexe /out:"<路径>\工具\DuoPupil.exe" "<路径>\工具\
 - [x] 多显示器区域截图 + 真全屏免框选
 - [x] 确定性 VL 调用脚本（问模型.ps1）+ OCR 状态显式化
 - [x] 安全加固：PID 身份验证防误杀、毫秒命名防覆盖、安装零信任区/进程级 Bypass
+
+> 完整更新历史见 [CHANGELOG.md](CHANGELOG.md)。
 
 ## 🔐 文件校验（SHA256）
 
