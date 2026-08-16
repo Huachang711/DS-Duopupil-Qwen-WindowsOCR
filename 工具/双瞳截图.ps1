@@ -78,8 +78,22 @@ function Stop-LockedProcess($lockPath) {
   if (-not (Test-Path $lockPath)) { return }
   try {
     $pidStr = ([IO.File]::ReadAllText($lockPath, [Text.Encoding]::UTF8)).Trim()
-    $p = Get-Process -Id ([int]$pidStr) -ErrorAction Stop
-    if ($p) { Stop-Process -Id $p.Id -Force -ErrorAction SilentlyContinue }
+    $id = [int]$pidStr
+    $p = Get-Process -Id $id -ErrorAction Stop
+    if ($p) {
+      $ok = $false
+      # kill only when this PID really is a DuoPupil process (name + command line),
+      # otherwise the stale lock is cleared without touching anything (PID reuse safety)
+      if ($p.ProcessName -in @('powershell', 'pwsh')) {
+        try {
+          $cl = (Get-CimInstance Win32_Process -Filter "ProcessId = $id" -ErrorAction Stop).CommandLine
+          $nShot = -join @([char]0x53CC, [char]0x77B3, [char]0x622A, [char]0x56FE)  # screenshot script name
+          $nTray = -join @([char]0x53CC, [char]0x77B3, [char]0x6258, [char]0x76D8)  # tray script name
+          if ($cl -and ($cl.Contains($nShot) -or $cl.Contains($nTray))) { $ok = $true }
+        } catch { }
+      }
+      if ($ok) { Stop-Process -Id $p.Id -Force -ErrorAction SilentlyContinue }
+    }
   } catch { }
   Remove-Item $lockPath -Force -ErrorAction SilentlyContinue
 }
@@ -218,6 +232,7 @@ function Place-ToolButtons {
 
 # ---- OCR function (Windows built-in, local) ----
 function Get-OcrText($pngPath) {
+  $script:lastOcrStatus = 'ERR'
   $text = ''
   try {
     Add-Type -AssemblyName System.Runtime.WindowsRuntime
@@ -243,6 +258,7 @@ function Get-OcrText($pngPath) {
     if ($engine) {
       $res = Await-Ocr ($engine.RecognizeAsync($bmp2)) ([Windows.Media.Ocr.OcrResult])
       $text = ($res.Lines | ForEach-Object { $_.Text }) -join "`r`n"
+      $script:lastOcrStatus = 'OK'
     }
   } catch { $text = '' }
   return $text
@@ -250,18 +266,27 @@ function Get-OcrText($pngPath) {
 
 # ---- save png + ocr txt ----
 function Save-Capture($bmp) {
-  $stamp = Get-Date -Format 'yyyy-MM-dd_HHmmss'
+  $stamp = Get-Date -Format 'yyyy-MM-dd_HHmmss_fff'
   $pngPath = Join-Path $imgDir ("ScreenShot_$stamp.png")
+  if (Test-Path $pngPath) {
+    $n = 2
+    while (Test-Path (Join-Path $imgDir ("ScreenShot_${stamp}_$n.png"))) { $n++ }
+    $stamp = "${stamp}_$n"
+    $pngPath = Join-Path $imgDir ("ScreenShot_$stamp.png")
+  }
   $bmp.Save($pngPath, [System.Drawing.Imaging.ImageFormat]::Png)
   $text = Get-OcrText $pngPath
   $txtPath = Join-Path $imgDir ("ScreenShot_$stamp.txt")
   [IO.File]::WriteAllText($txtPath, $text, (New-Object Text.UTF8Encoding($false)))
   $lineCount = @($text -split "`r?`n" | Where-Object { $_.Trim() }).Count
+  $ocrStatus = 'ERR'
+  if ($script:lastOcrStatus -eq 'OK') { if ($lineCount -gt 0) { $ocrStatus = 'OK' } else { $ocrStatus = 'EMPTY' } }
   $status = @(
     ('TIME=' + (Get-Date -Format 'yyyy-MM-dd HH:mm:ss')),
     ('PNG=ScreenShot_' + $stamp + '.png'),
     ('TXT=ScreenShot_' + $stamp + '.txt'),
-    ('OCR_LINES=' + $lineCount)
+    ('OCR_LINES=' + $lineCount),
+    ('OCR_STATUS=' + $ocrStatus)
   )
   [IO.File]::WriteAllText((Join-Path $toolDir 'latest.txt'), ($status -join "`r`n"), (New-Object Text.UTF8Encoding($false)))
   # image-code: single mode (1) or multi mode (custom count), per 工具\code.cfg
@@ -648,7 +673,7 @@ function Show-HotkeyWindow {
 function Invoke-Capture {
   try {
   Log-Timing 'CAPTURE_ENTER'
-  $bounds = [System.Windows.Forms.Screen]::PrimaryScreen.Bounds
+  $bounds = [System.Windows.Forms.SystemInformation]::VirtualScreen
   $script:capH = $bounds.Height
   $script:capBg = New-Object System.Drawing.Bitmap $bounds.Width, $bounds.Height
   $gfx = [System.Drawing.Graphics]::FromImage($script:capBg)
@@ -799,19 +824,39 @@ function Invoke-Capture {
   $r = $cap.ShowDialog()
   $script:focusMe = $null
   $cap.Dispose()
-  $script:capBg.Dispose()
   $script:capDimBg.Dispose()
-  if ($r -ne 'Yes' -and $r -ne 'No') { return }
+  if ($r -ne 'Yes' -and $r -ne 'No') { $script:capBg.Dispose(); return }
 
   $sel = $script:capSel
   $crop = New-Object System.Drawing.Bitmap $sel.Width, $sel.Height
   $cg = [System.Drawing.Graphics]::FromImage($crop)
-  $cg.CopyFromScreen($sel.Location, [System.Drawing.Point]::Empty, $sel.Size)
+  $cg.DrawImage($script:capBg, (New-Object System.Drawing.Rectangle 0, 0, $sel.Width, $sel.Height), $sel, $([System.Drawing.GraphicsUnit]::Pixel))
   $cg.Dispose()
+  $script:capBg.Dispose()
 
   $saved = Save-Capture $crop
   $crop.Dispose()
   if ($r -eq 'No') { Show-OcrWindow $saved.Text } else { Show-Toast (U 'TOAST_SAVED') }
+  } finally {
+    $script:phase = 'idle'
+    $script:focusMe = $null
+  }
+}
+
+# ---- instant fullscreen capture (whole virtual desktop, no selection UI) ----
+function Invoke-CaptureFull {
+  try {
+    Log-Timing 'CAPTURE_FULL_ENTER'
+    $script:phase = 'busy'
+    $bounds = [System.Windows.Forms.SystemInformation]::VirtualScreen
+    $script:capH = $bounds.Height
+    $bmp = New-Object System.Drawing.Bitmap $bounds.Width, $bounds.Height
+    $gfx = [System.Drawing.Graphics]::FromImage($bmp)
+    $gfx.CopyFromScreen($bounds.Location, [System.Drawing.Point]::Empty, $bounds.Size)
+    $gfx.Dispose()
+    $saved = Save-Capture $bmp
+    $bmp.Dispose()
+    Show-Toast (U 'TOAST_SAVED')
   } finally {
     $script:phase = 'idle'
     $script:focusMe = $null
@@ -919,7 +964,7 @@ $panel.Add_FormClosed({
 
 $specs = @(
   @{ T = (U 'BTN_REGION'); C = $C_GRAY;  A = { Invoke-Capture; if ($script:panelRef) { $script:panelRef.Activate() } } },
-  @{ T = (U 'BTN_FULL');   C = $C_GRAY;  A = { Invoke-Capture; if ($script:panelRef) { $script:panelRef.Activate() } } },
+  @{ T = (U 'BTN_FULL');   C = $C_GRAY;  A = { Invoke-CaptureFull; if ($script:panelRef) { $script:panelRef.Activate() } } },
   @{ T = (U 'BTN_TRAY');   C = $C_GRAY;  A = {
         $script:trayHandover = $true
         if ($script:poll) { $script:poll.Stop(); $script:poll.Dispose(); $script:poll = $null }

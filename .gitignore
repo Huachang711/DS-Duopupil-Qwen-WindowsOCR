@@ -25,3 +25,8 @@ DuoPupil.exe
 
 # 运行时配置
 code.cfg
+
+# API script outputs
+answer.txt
+err-last.txt
+req.json

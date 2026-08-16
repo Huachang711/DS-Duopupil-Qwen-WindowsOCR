@@ -81,7 +81,7 @@ function Add-MenuItem($text, $action) {
   $menu.Items.Add($mi) | Out-Null
 }
 Add-MenuItem (U 'BTN_REGION') { Invoke-Capture; $script:phase = 'idle' }
-Add-MenuItem (U 'BTN_FULL')   { Invoke-Capture; $script:phase = 'idle' }
+Add-MenuItem (U 'BTN_FULL')   { Invoke-CaptureFull; $script:phase = 'idle' }
 Add-MenuItem (U 'BTN_FOLDER') { Start-Process explorer.exe -ArgumentList $imgDir }
 Add-MenuItem (U 'BTN_HOTKEY') { Show-HotkeyWindow }
 Add-MenuItem (U 'BTN_EXIT') {

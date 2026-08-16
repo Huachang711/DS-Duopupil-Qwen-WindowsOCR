@@ -9,7 +9,7 @@ public static class Launcher {
     psi.FileName = "powershell.exe";
     var extra = "";
     for (int i = 1; i < args.Length; i++) { extra += " " + args[i]; }
-    psi.Arguments = "-NoProfile -File \"" + args[0] + "\"" + extra;
+    psi.Arguments = "-NoProfile -ExecutionPolicy Bypass -File \"" + args[0] + "\"" + extra;
     psi.UseShellExecute = false;
     psi.CreateNoWindow = true;
     try { Process.Start(psi); return 0; }
